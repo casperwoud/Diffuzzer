@@ -80,6 +80,7 @@ typedef enum {
   INSTRUMENT_GCC = 6,
   INSTRUMENT_CLANG = 7,
   INSTRUMENT_OPT_CTX = 8,
+  INSTRUMENT_DIFFUZZER = 9,
   INSTRUMENT_OPT_NGRAM = 16,
   INSTRUMENT_OPT_CALLER = 32,
   INSTRUMENT_OPT_CTX_K = 64,
@@ -100,7 +101,7 @@ typedef enum {
 
 static u8 cwd[4096];
 
-char instrument_mode_string[18][18] = {
+char instrument_mode_string[19][18] = {
 
     "DEFAULT",
     "CLASSIC",
@@ -112,6 +113,7 @@ char instrument_mode_string[18][18] = {
     "CLANG",
     "CTX",
     "CALLER",
+    "DIFFUZZER",
     "",
     "",
     "",
@@ -745,6 +747,11 @@ void compiler_mode_by_cmdline(aflcc_state_t *aflcc, int argc, char **argv) {
       while (*ptr == '-')
         ptr++;
 
+      if (strncasecmp(ptr, "diffuzzer", strlen("diffuzzer")) == 0) {
+        aflcc->compiler_mode = LTO;
+        aflcc->instrument_mode = INSTRUMENT_DIFFUZZER;
+      }
+
       if (strncasecmp(ptr, "LTO", 3) == 0) {
 
         aflcc->compiler_mode = LTO;
@@ -908,6 +915,16 @@ static void instrument_mode_new_environ(aflcc_state_t *aflcc) {
 
       }
 
+    }
+
+    if (strncasecmp(ptr2, "diffuzzer", strlen("diffuzzer")) == 0) {
+      if (!aflcc->instrument_mode ||
+          aflcc->instrument_mode == INSTRUMENT_DIFFUZZER) {
+        aflcc->instrument_mode = INSTRUMENT_DIFFUZZER;
+      } else {
+        FATAL("main instrumentation mode already set with %s",
+              instrument_mode_2str(aflcc->instrument_mode));
+      }
     }
 
     if (strncasecmp(ptr2, "pc-guard", strlen("pc-guard")) == 0 ||
@@ -1261,7 +1278,7 @@ void mode_final_checkout(aflcc_state_t *aflcc, int argc, char **argv) {
 
   }
 
-  if (aflcc->compiler_mode == LTO) {
+  if (aflcc->compiler_mode == LTO || aflcc->compiler_mode) {
 
     if (aflcc->instrument_mode == 0 ||
         aflcc->instrument_mode == INSTRUMENT_LTO ||
@@ -3437,6 +3454,10 @@ static void edit_params(aflcc_state_t *aflcc, u32 argc, char **argv,
         add_lto_linker(aflcc);
         add_lto_passes(aflcc);
 
+      }
+
+      if (aflcc->instrument_mode == INSTRUMENT_DIFFUZZER) {
+        load_llvm_pass(aflcc, "diffuzzer-pass.so");
       }
 
     } else {
