@@ -80,7 +80,7 @@ typedef enum {
   INSTRUMENT_GCC = 6,
   INSTRUMENT_CLANG = 7,
   INSTRUMENT_OPT_CTX = 8,
-  INSTRUMENT_DIFFUZZER = 9,
+  INSTRUMENT_DIFFUZZER = 10,
   INSTRUMENT_OPT_NGRAM = 16,
   INSTRUMENT_OPT_CALLER = 32,
   INSTRUMENT_OPT_CTX_K = 64,
@@ -747,15 +747,13 @@ void compiler_mode_by_cmdline(aflcc_state_t *aflcc, int argc, char **argv) {
       while (*ptr == '-')
         ptr++;
 
-      if (strncasecmp(ptr, "diffuzzer", strlen("diffuzzer")) == 0) {
-        aflcc->compiler_mode = LTO;
-        aflcc->instrument_mode = INSTRUMENT_DIFFUZZER;
-      }
-
       if (strncasecmp(ptr, "LTO", 3) == 0) {
 
         aflcc->compiler_mode = LTO;
 
+      } else if (strncasecmp(ptr, "diffuzzer", strlen("diffuzzer")) == 0) {
+          aflcc->compiler_mode = LTO;
+          aflcc->instrument_mode = INSTRUMENT_DIFFUZZER;
       } else if (strncasecmp(ptr, "LLVM", 4) == 0) {
 
         aflcc->compiler_mode = LLVM;
@@ -893,7 +891,6 @@ static void instrument_mode_new_environ(aflcc_state_t *aflcc) {
   u8 *ptr2 = strtok(getenv("AFL_LLVM_INSTRUMENT"), ":,;");
 
   while (ptr2) {
-
     if (strncasecmp(ptr2, "afl", strlen("afl")) == 0 ||
         strncasecmp(ptr2, "classic", strlen("classic")) == 0) {
 
@@ -916,16 +913,17 @@ static void instrument_mode_new_environ(aflcc_state_t *aflcc) {
       }
 
     }
-
+    
     if (strncasecmp(ptr2, "diffuzzer", strlen("diffuzzer")) == 0) {
       if (!aflcc->instrument_mode ||
           aflcc->instrument_mode == INSTRUMENT_DIFFUZZER) {
-        aflcc->instrument_mode = INSTRUMENT_DIFFUZZER;
+        aflcc->instrument_mode = INSTRUMENT_DIFFUZZER;        
       } else {
         FATAL("main instrumentation mode already set with %s",
               instrument_mode_2str(aflcc->instrument_mode));
       }
     }
+
 
     if (strncasecmp(ptr2, "pc-guard", strlen("pc-guard")) == 0 ||
         strncasecmp(ptr2, "pcguard", strlen("pcguard")) == 0) {
@@ -1116,7 +1114,6 @@ static void instrument_mode_new_environ(aflcc_state_t *aflcc) {
     ptr2 = strtok(NULL, ":,;");
 
   }
-
 }
 
 /*
