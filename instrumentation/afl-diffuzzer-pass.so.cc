@@ -6,15 +6,18 @@
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/Passes/PassPlugin.h"
 #include "llvm/Passes/PassBuilder.h"
+#include "debug.h"
 
 using namespace llvm;
 
 namespace {
 
-class MyCustomPass : public PassInfoMixin<MyCustomPass> {
+class DiffuzzerPass : public PassInfoMixin<DiffuzzerPass> {
 public:
   PreservedAnalyses run(Module &M, ModuleAnalysisManager &MAM) {
-    errs() << "Running MyCustomPass\n";
+    SAYF(cCYA "afl-diffuzzer-pass" VERSION cRST
+                " WIEHOEEE\n");
+    errs() << "Running Diffuzzer pass\n";
 
     for (Function &F : M) {
       errs() << "Function: " << F.getName() << "\n";
@@ -27,16 +30,11 @@ public:
 } 
 
 extern "C" LLVM_ATTRIBUTE_WEAK ::llvm::PassPluginLibraryInfo llvmGetPassPluginInfo() {
-  return {LLVM_PLUGIN_API_VERSION, "MyCustomPass", LLVM_VERSION_STRING,
+  return {LLVM_PLUGIN_API_VERSION, "diffuzzer-pass", LLVM_VERSION_STRING,
           [](PassBuilder &PB) {
-            PB.registerPipelineParsingCallback(
-                [](StringRef Name, ModulePassManager &MPM,
-                   ArrayRef<PassBuilder::PipelineElement>) {
-                  if (Name == "my-custom-pass") {
-                    MPM.addPass(MyCustomPass());
-                    return true;
-                  }
-                  return false;
+            PB.registerPipelineStartEPCallback(
+                [](ModulePassManager &MPM, OptimizationLevel Level) {
+                  MPM.addPass(DiffuzzerPass());
                 });
           }};
 }

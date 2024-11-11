@@ -2338,14 +2338,28 @@ void add_lto_passes(aflcc_state_t *aflcc) {
 
 #if defined(AFL_CLANG_LDPATH) && LLVM_MAJOR >= 15
   // The NewPM implementation only works fully since LLVM 15.
-  insert_object(aflcc, "SanitizerCoverageLTO.so", "-Wl,--load-pass-plugin=%s",
-                0);
+  insert_object(aflcc, "SanitizerCoverageLTO.so", "-Wl,--load-pass-plugin=%s", 0);
+
+  if (aflcc->instrument_mode == INSTRUMENT_DIFFUZZER) {
+    insert_object(aflcc, "afl-diffuzzer-pass.so", "-Wl,--load-pass-plugin=%s", 0);
+  }
+
 #elif defined(AFL_CLANG_LDPATH) && LLVM_MAJOR >= 13
   insert_param(aflcc, "-Wl,--lto-legacy-pass-manager");
   insert_object(aflcc, "SanitizerCoverageLTO.so", "-Wl,-mllvm=-load=%s", 0);
+
+  if (aflcc->instrument_mode == INSTRUMENT_DIFFUZZER) {
+    insert_object(aflcc, "afl-diffuzzer-pass.so", "-Wl,-mllvm=-load=%s", 0);
+  }
+
 #else
   insert_param(aflcc, "-fno-experimental-new-pass-manager");
   insert_object(aflcc, "SanitizerCoverageLTO.so", "-Wl,-mllvm=-load=%s", 0);
+
+  if (aflcc->instrument_mode == INSTRUMENT_DIFFUZZER) {
+    insert_object(aflcc, "afl-diffuzzer-pass.so", "-Wl,-mllvm=-load=%s", 0);
+  }
+
 #endif
 
   insert_param(aflcc, "-Wl,--allow-multiple-definition");
@@ -3454,7 +3468,7 @@ static void edit_params(aflcc_state_t *aflcc, u32 argc, char **argv,
       }
 
       if (aflcc->instrument_mode == INSTRUMENT_DIFFUZZER) {
-        load_llvm_pass(aflcc, "diffuzzer-pass.so");
+        load_llvm_pass(aflcc, "afl-diffuzzer-pass.so");
       }
 
     } else {
@@ -3467,7 +3481,12 @@ static void edit_params(aflcc_state_t *aflcc, u32 argc, char **argv,
 
         add_native_pcguard(aflcc);
 
-      } else {
+      } else if (aflcc->instrument_mode == INSTRUMENT_DIFFUZZER) {
+        // Load the standard AFL LLVM pass
+        load_llvm_pass(aflcc, "afl-diffuzzer-pass.so");
+        load_llvm_pass(aflcc, "afl-llvm-pass.so");
+        
+      } else { 
 
         load_llvm_pass(aflcc, "afl-llvm-pass.so");
 
